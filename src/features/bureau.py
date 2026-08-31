@@ -6,6 +6,7 @@ import pandas as pd
 
 from src.utils.helpers import one_hot_encoder, reduce_mem_usage
 
+
 def _aggregate_bureau_balance(bureau_balance: pd.DataFrame) -> pd.DataFrame:
     """Aggregate bureau_balance to one row per SK_ID_BUREAU."""
     bb, cat_cols = one_hot_encoder(bureau_balance, nan_as_category=True)

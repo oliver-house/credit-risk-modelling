@@ -5,8 +5,9 @@ Feature engineering for application_train.csv / application_test.csv
 import numpy as np
 import pandas as pd
 
-from src.config import SENTINEL_DAYS, DAYS_PER_YEAR
+from src.config import DAYS_PER_YEAR, SENTINEL_DAYS
 from src.utils.helpers import one_hot_encoder
+
 
 def process_application(df: pd.DataFrame) -> pd.DataFrame:
     """

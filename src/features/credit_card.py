@@ -8,6 +8,7 @@ import pandas as pd
 from src.config import RECENCY_MONTHS
 from src.utils.helpers import one_hot_encoder, reduce_mem_usage
 
+
 def process_credit_card(cc: pd.DataFrame) -> pd.DataFrame:
     """Aggregate credit_card_balance to one row per SK_ID_CURR."""
     cc = reduce_mem_usage(cc, verbose=False)
