@@ -8,6 +8,7 @@ import pandas as pd
 from src.config import SENTINEL_DAYS
 from src.utils.helpers import one_hot_encoder, reduce_mem_usage
 
+
 def process_previous_application(prev: pd.DataFrame) -> pd.DataFrame:
     """Aggregate previous_application to one row per SK_ID_CURR."""
     prev = reduce_mem_usage(prev, verbose=False)

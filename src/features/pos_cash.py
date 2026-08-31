@@ -2,11 +2,11 @@
 Feature engineering for POS_CASH_balance.csv
 """
 
-import numpy as np
 import pandas as pd
 
 from src.config import RECENCY_MONTHS
 from src.utils.helpers import one_hot_encoder, reduce_mem_usage
+
 
 def process_pos_cash(pos: pd.DataFrame) -> pd.DataFrame:
     """Aggregate POS_CASH_balance to one row per SK_ID_CURR."""
