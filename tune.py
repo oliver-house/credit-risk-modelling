@@ -3,18 +3,23 @@
 import argparse
 import json
 
+import lightgbm as lgb
 import numpy as np
 import optuna
 from sklearn.metrics import roc_auc_score
 from sklearn.model_selection import StratifiedKFold
-import lightgbm as lgb
 
-from src.config import RANDOM_STATE, TARGET_COL, ID_COL, PARAMS_DIR
+from src.config import ID_COL, LGBM_PARAMS, PARAMS_DIR, RANDOM_STATE, TARGET_COL
 from src.features.pipeline import build_features
 from src.utils.helpers import get_logger, timer
 
 logger  = get_logger(__name__)
 optuna.logging.set_verbosity(optuna.logging.WARNING)
+
+_STATIC_PARAMS = {
+    k: LGBM_PARAMS[k]
+    for k in ("objective", "metric", "boosting_type", "n_jobs", "verbose", "subsample_freq")
+}
 
 def objective(
     trial: optuna.Trial,
@@ -24,17 +29,12 @@ def objective(
 ) -> float:
     """Trains LightGBM with trial's hyperparameters and returns mean OOF AUC."""
     params = {
-        "objective":        "binary",
-        "metric":           "auc",
-        "verbosity":        -1,
-        "boosting_type":    "gbdt",
-        "n_jobs":           -1,
+        **_STATIC_PARAMS,
         "learning_rate":    trial.suggest_float("learning_rate",   0.01, 0.1,  log=True),
         "num_leaves":       trial.suggest_int(  "num_leaves",      20,   300),
         "max_depth":        trial.suggest_int(  "max_depth",       3,    10),
         "min_child_samples":trial.suggest_int(  "min_child_samples", 10, 200),
         "subsample":        trial.suggest_float("subsample",       0.5,  1.0),
-        "subsample_freq":   1,
         "colsample_bytree": trial.suggest_float("colsample_bytree",0.4,  1.0),
         "reg_alpha":        trial.suggest_float("reg_alpha",       1e-4, 10.0, log=True),
         "reg_lambda":       trial.suggest_float("reg_lambda",      1e-4, 10.0, log=True),
@@ -85,11 +85,8 @@ def main() -> None:
     X = train[features].values
     y = train[TARGET_COL].values
 
-    if args.sample and args.sample < len(train):
-        rng = np.random.default_rng(RANDOM_STATE)
-        idx = rng.choice(len(train), size=args.sample, replace=False)
-        X, y = X[idx], y[idx]
-        logger.info(f"Sampled {args.sample} rows for tuning")
+    if args.sample:
+        logger.info(f"Tuning on a {len(train)}-row sample")
 
     study = optuna.create_study(
         direction="maximize",
@@ -116,7 +113,7 @@ def main() -> None:
     PARAMS_DIR.mkdir(exist_ok=True)
     out_path = PARAMS_DIR / "lgbm_best_params.json"
     with open(out_path, "w") as f:
-        json.dump(best.params, f, indent=2)
+        json.dump({"oof_auc": round(best.value, 5), "params": best.params}, f, indent=2)
     logger.info(f"Best params saved to {out_path}")
 
 if __name__ == "__main__":

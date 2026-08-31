@@ -13,17 +13,18 @@ Usage
 
 import argparse
 import json
+from pathlib import Path
 
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from sklearn.metrics import roc_auc_score, roc_curve
 
-from src.config import ID_COL, TARGET_COL, PREDICTIONS_DIR, PARAMS_DIR
+from src.config import ID_COL, PARAMS_DIR, PREDICTIONS_DIR, REPORTS_DIR, TARGET_COL
 from src.features.pipeline import build_features
+from src.models.catboost_model import train_catboost
 from src.models.lgbm_model import train_lgbm
 from src.models.xgb_model import train_xgb
-from src.models.catboost_model import train_catboost
 from src.utils.helpers import get_logger, timer
 
 logger = get_logger(__name__)
@@ -60,32 +61,32 @@ def _tune_weights(
     return best_weights, float(best["auc"]), df
 
 
-def _plot_weight_tuning(df: pd.DataFrame) -> None:
+def _plot_weight_tuning(df: pd.DataFrame, out_dir: Path) -> None:
     """Scatter plot of ensemble OOF AUC across the weight grid."""
-    fig, ax = plt.subplots(figsize=(8, 6))
+    _, ax = plt.subplots(figsize=(8, 6))
     scatter = ax.scatter(df["lgbm"], df["xgb"], c=df["auc"], cmap="RdYlBu_r", alpha=0.8, s=40)
     plt.colorbar(scatter, ax=ax, label="OOF AUC")
     ax.set_xlabel("LightGBM weight")
     ax.set_ylabel("XGBoost weight")
     ax.set_title("Ensemble OOF AUC by blend weights\n(CatBoost weight = 1 - lgbm - xgb)")
-    out_path = PREDICTIONS_DIR / "weight_tuning.png"
+    out_path = out_dir / "weight_tuning.png"
     plt.tight_layout()
     plt.savefig(out_path, dpi=150)
     plt.close()
     logger.info(f"Weight tuning plot saved to {out_path}")
 
 
-def _plot_roc_curve(y: np.ndarray, oof_blend: np.ndarray, auc: float) -> None:
+def _plot_roc_curve(y: np.ndarray, oof_blend: np.ndarray, auc: float, out_dir: Path) -> None:
     """ROC curve for ensemble OOF predictions."""
     fpr, tpr, _ = roc_curve(y, oof_blend)
-    fig, ax = plt.subplots(figsize=(7, 6))
+    _, ax = plt.subplots(figsize=(7, 6))
     ax.plot(fpr, tpr, lw=1.5, label=f"Ensemble (AUC = {auc:.5f})")
     ax.plot([0, 1], [0, 1], linestyle="--", color="grey", lw=1)
     ax.set_xlabel("False positive rate")
     ax.set_ylabel("True positive rate")
     ax.set_title("Ensemble OOF ROC curve")
     ax.legend(loc="lower right")
-    out_path = PREDICTIONS_DIR / "roc_curve.png"
+    out_path = out_dir / "roc_curve.png"
     plt.tight_layout()
     plt.savefig(out_path, dpi=150)
     plt.close()
@@ -110,8 +111,7 @@ def _select_features(imp_df: pd.DataFrame, threshold: float = IMPORTANCE_THRESHO
     return selected
 
 
-def _plot_feature_importances(df: pd.DataFrame, top_n: int = 30) -> None:
-    """Horizontal bar charts of top N features for each model and the ensemble."""
+def _plot_feature_importances(df: pd.DataFrame, out_dir: Path, top_n: int = 30) -> None:
     top = df.head(top_n)
     fig, axes = plt.subplots(1, 4, figsize=(24, 10))
     for ax, col, title in zip(
@@ -120,9 +120,11 @@ def _plot_feature_importances(df: pd.DataFrame, top_n: int = 30) -> None:
         ["LightGBM", "XGBoost", "CatBoost", "Ensemble"],
     ):
         ax.barh(top["feature"][::-1], top[col][::-1])
-        ax.set_title(f"{title} — top {top_n}")
+        ax.set_title(f"Scored by {title}")
         ax.set_xlabel("Normalised importance")
-    out_path = PREDICTIONS_DIR / "feature_importances.png"
+    fig.suptitle(f"Top {top_n} features by ensemble importance "
+                 f"(same features in every panel)")
+    out_path = out_dir / "feature_importances.png"
     plt.tight_layout()
     plt.savefig(out_path, dpi=150)
     plt.close()
@@ -134,6 +136,11 @@ def main() -> None:
     parser.add_argument("--smoke", action="store_true",
                         help=f"Sanity-check run: {SMOKE_ROWS} rows, {SMOKE_FOLDS} folds")
     args = parser.parse_args()
+
+    data_dir    = PREDICTIONS_DIR / "smoke" if args.smoke else PREDICTIONS_DIR
+    reports_dir = REPORTS_DIR / "smoke"     if args.smoke else REPORTS_DIR
+    data_dir.mkdir(parents=True, exist_ok=True)
+    reports_dir.mkdir(parents=True, exist_ok=True)
 
     # ── Feature engineering ───────────────────────────────────────────────────
     smoke_n = SMOKE_ROWS if args.smoke else 0
@@ -181,9 +188,8 @@ def main() -> None:
     test_blend = (best_weights["lgbm"] * lgbm_test + best_weights["xgb"] * xgb_test
                   + best_weights["catboost"] * cb_test)
 
-    PREDICTIONS_DIR.mkdir(exist_ok=True)
-    _plot_weight_tuning(wt_df)
-    _plot_roc_curve(y, oof_blend, best_auc)
+    _plot_weight_tuning(wt_df, reports_dir)
+    _plot_roc_curve(y, oof_blend, best_auc, reports_dir)
 
     # ── Save OOF predictions ──────────────────────────────────────────────────
     oof_df = pd.DataFrame({
@@ -194,13 +200,13 @@ def main() -> None:
         "catboost_oof":    cb_oof,
         "ensemble_oof":    oof_blend,
     })
-    oof_path = PREDICTIONS_DIR / "oof_predictions.csv"
+    oof_path = data_dir / "oof_predictions.csv"
     oof_df.to_csv(oof_path, index=False)
     logger.info(f"OOF predictions saved to {oof_path}")
 
     # ── Save test predictions ─────────────────────────────────────────────────
     test_ids = test[ID_COL].values
-    pred_path = PREDICTIONS_DIR / "test_predictions.csv"
+    pred_path = data_dir / "test_predictions.csv"
     pd.DataFrame({ID_COL: test_ids, "TARGET": test_blend}).to_csv(pred_path, index=False)
     logger.info(f"Test predictions saved to {pred_path}")
 
@@ -219,15 +225,19 @@ def main() -> None:
         "ensemble":  ens_imp,
     }).sort_values("ensemble", ascending=False).reset_index(drop=True)
 
-    imp_path = PREDICTIONS_DIR / "feature_importances.csv"
+    imp_path = data_dir / "feature_importances.csv"
     imp_df.to_csv(imp_path, index=False)
     logger.info(f"Feature importances saved to {imp_path}")
-    _plot_feature_importances(imp_df)
+    _plot_feature_importances(imp_df, reports_dir)
 
     selected = _select_features(imp_df)
-    with open(selected_path, "w") as f:
-        json.dump(selected, f, indent=2)
-    logger.info(f"Selected features saved to {selected_path}")
+    if args.smoke:
+        logger.info(f"Smoke run — not overwriting {selected_path} "
+                    f"({len(selected)} features selected from a toy sample)")
+    else:
+        with open(selected_path, "w") as f:
+            json.dump(selected, f, indent=2)
+        logger.info(f"Selected features saved to {selected_path}")
 
     # ── Save results summary ──────────────────────────────────────────────────
     results = {
@@ -237,7 +247,7 @@ def main() -> None:
         "ensemble_oof_auc": round(best_auc, 5),
         "best_weights":     best_weights,
     }
-    results_path = PREDICTIONS_DIR / "results.json"
+    results_path = data_dir / "results.json"
     with open(results_path, "w") as f:
         json.dump(results, f, indent=2)
     logger.info(f"Results saved to {results_path}")
