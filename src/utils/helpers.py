@@ -10,6 +10,7 @@ from contextlib import contextmanager
 import numpy as np
 import pandas as pd
 
+
 def get_logger(name: str, level: int = logging.INFO) -> logging.Logger:
     """Return a consistently-formatted logger."""
     logger = logging.getLogger(name)
@@ -67,12 +68,8 @@ def reduce_mem_usage(df: pd.DataFrame, verbose: bool = True) -> pd.DataFrame:
 
 
 def one_hot_encoder(df: pd.DataFrame, nan_as_category: bool = True):
-    """
-    One-hot encode all object columns.
-    Returns (encoded_df, list_of_new_column_names).
-    """
     original_columns = list(df.columns)
-    categorical_columns = df.select_dtypes(["object"]).columns.tolist()
+    categorical_columns = df.select_dtypes(include=["object", "string"]).columns.tolist()
     df = pd.get_dummies(df, columns=categorical_columns, dummy_na=nan_as_category)
     new_columns = [c for c in df.columns if c not in original_columns]
     return df, new_columns

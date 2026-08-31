@@ -8,6 +8,7 @@ ROOT_DIR = Path(__file__).resolve().parent.parent
 DATA_DIR = Path(os.environ.get("CREDITRISK_DATA_DIR", ROOT_DIR / "data"))
 PREDICTIONS_DIR = ROOT_DIR / "predictions"
 PARAMS_DIR      = ROOT_DIR / "params"
+REPORTS_DIR     = ROOT_DIR / "reports"
 
 # ── Data files ───────────────────────────────────────────────────────────────
 DATA_FILES = {
@@ -32,6 +33,26 @@ N_FOLDS = 3
 RANDOM_STATE = 42
 TARGET_COL = "TARGET"
 ID_COL = "SK_ID_CURR"
+
+LGBM_PARAMS = {
+    "objective": "binary",
+    "metric": "auc",
+    "boosting_type": "gbdt",
+    "n_estimators": 10000,
+    "learning_rate": 0.05,
+    "num_leaves": 34,
+    "max_depth": -1,
+    "min_child_samples": 20,
+    "colsample_bytree": 0.9,
+    "subsample": 0.9,
+    "subsample_freq": 1,
+    "reg_alpha": 0.1,
+    "reg_lambda": 0.1,
+    "min_split_gain": 0.01,
+    "verbose": -1,
+    "n_jobs": -1,
+    "random_state": RANDOM_STATE,
+}
 
 # ── XGBoost hyperparameters ──────────────────────────────────────────────────
 XGB_PARAMS = {
