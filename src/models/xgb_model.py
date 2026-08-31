@@ -3,14 +3,15 @@ XGBoost model with stratified K-Fold cross-validation
 """
 
 import gc
+
 import numpy as np
 import pandas as pd
-from sklearn.model_selection import StratifiedKFold
-from sklearn.metrics import roc_auc_score
 import xgboost as xgb
+from sklearn.metrics import roc_auc_score
+from sklearn.model_selection import StratifiedKFold
 from tqdm import tqdm
 
-from src.config import XGB_PARAMS, N_FOLDS, RANDOM_STATE, TARGET_COL
+from src.config import N_FOLDS, RANDOM_STATE, TARGET_COL, XGB_PARAMS
 from src.utils.helpers import get_logger
 
 logger = get_logger(__name__)

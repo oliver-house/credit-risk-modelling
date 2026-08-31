@@ -3,11 +3,12 @@ CatBoost model with stratified K-Fold cross-validation
 """
 
 import gc
+
 import numpy as np
 import pandas as pd
-from sklearn.model_selection import StratifiedKFold
-from sklearn.metrics import roc_auc_score
 from catboost import CatBoostClassifier, Pool
+from sklearn.metrics import roc_auc_score
+from sklearn.model_selection import StratifiedKFold
 from tqdm import tqdm
 
 from src.config import CB_PARAMS, N_FOLDS, RANDOM_STATE, TARGET_COL

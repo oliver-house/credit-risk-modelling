@@ -4,14 +4,15 @@ LightGBM model with stratified K-Fold cross-validation
 
 import gc
 import json
+
+import lightgbm as lgb
 import numpy as np
 import pandas as pd
-from sklearn.model_selection import StratifiedKFold
 from sklearn.metrics import roc_auc_score
-import lightgbm as lgb
+from sklearn.model_selection import StratifiedKFold
 from tqdm import tqdm
 
-from src.config import N_FOLDS, PARAMS_DIR, RANDOM_STATE, TARGET_COL
+from src.config import LGBM_PARAMS, N_FOLDS, PARAMS_DIR, RANDOM_STATE, TARGET_COL
 from src.utils.helpers import get_logger
 
 logger = get_logger(__name__)
@@ -20,15 +21,25 @@ _BEST_PARAMS_PATH = PARAMS_DIR / "lgbm_best_params.json"
 
 
 def _load_params() -> dict:
-    """Load tuned LightGBM params from lgbm_best_params.json."""
     if not _BEST_PARAMS_PATH.exists():
-        raise FileNotFoundError(
-            f"No tuned params found at {_BEST_PARAMS_PATH}. Run tune.py first."
+        logger.warning(
+            f"No tuned params at {_BEST_PARAMS_PATH} — falling back to config "
+            f"defaults. Run tune.py to generate them."
         )
+        return dict(LGBM_PARAMS)
+
     with open(_BEST_PARAMS_PATH) as f:
-        params = json.load(f)
-    logger.info(f"Loaded tuned LightGBM params from {_BEST_PARAMS_PATH}")
-    return params
+        payload = json.load(f)
+
+    tuned = payload.get("params", payload) if isinstance(payload, dict) else {}
+    if not isinstance(tuned, dict) or not tuned:
+        raise ValueError(
+            f"{_BEST_PARAMS_PATH} contains no usable params. Expected a mapping "
+            f'of hyperparameters, or {{"oof_auc": ..., "params": {{...}}}}.'
+        )
+
+    logger.info(f"Loaded {len(tuned)} tuned LightGBM params from {_BEST_PARAMS_PATH}")
+    return {**LGBM_PARAMS, **tuned}
 
 
 def train_lgbm(
