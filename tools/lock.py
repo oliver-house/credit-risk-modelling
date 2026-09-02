@@ -6,17 +6,6 @@ from packaging.requirements import Requirement
 
 ROOT = Path(__file__).resolve().parent.parent
 
-HEADER = """\
-# Exact pins for the container image, so a build is reproducible rather than
-# whatever the index happened to serve that day. requirements.txt keeps its
-# ranges for development; this is the transitive closure of those ranges as
-# resolved on Python 3.14.7, with the dev tools left out.
-#
-# Regenerate after changing requirements.txt:
-#   python -m pip install -r requirements.txt
-#   python tools/lock.py > requirements.lock
-"""
-
 
 def _canonical(name: str) -> str:
     return name.lower().replace("_", "-")
@@ -54,7 +43,6 @@ def main() -> int:
         return 1
 
     names = sorted(closure(roots, installed))
-    print(HEADER)
     for name in names:
         dist = installed[name]
         print(f"{dist.metadata['Name']}=={dist.version}")
