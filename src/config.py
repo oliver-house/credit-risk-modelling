@@ -9,6 +9,11 @@ DATA_DIR = Path(os.environ.get("CREDITRISK_DATA_DIR", ROOT_DIR / "data"))
 PREDICTIONS_DIR = ROOT_DIR / "predictions"
 PARAMS_DIR      = ROOT_DIR / "params"
 REPORTS_DIR     = ROOT_DIR / "reports"
+MODELS_DIR      = ROOT_DIR / "models"
+MLRUNS_DIR      = ROOT_DIR / "mlruns"
+
+MLFLOW_DB_PATH    = MLRUNS_DIR / "mlflow.db"
+MLFLOW_EXPERIMENT = "credit-risk"
 
 # ── Data files ───────────────────────────────────────────────────────────────
 DATA_FILES = {
@@ -29,8 +34,17 @@ RECENCY_MONTHS  = -3
 RECENCY_DAYS    = -365
 
 # ── Cross-validation ─────────────────────────────────────────────────────────
-N_FOLDS = 3
+N_FOLDS = 5
 RANDOM_STATE = 42
+
+HOLDOUT_FRAC = 0.2
+
+SHAP_SAMPLE_ROWS = 5_000
+
+COST_FN = 10.0
+COST_FP = 1.0
+
+N_SCORE_BANDS = 10
 TARGET_COL = "TARGET"
 ID_COL = "SK_ID_CURR"
 
