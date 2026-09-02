@@ -45,3 +45,11 @@ logs/
 catboost_info/
 
 reports/smoke/
+
+/models/
+
+*.npy
+
+mlruns/
+
+/docs/
