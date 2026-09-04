@@ -46,7 +46,7 @@ flowchart LR
 > Delete this note once it is.
 >
 > ```powershell
-> python train.py --update-features --save-features
+> python train.py --save-features
 > python explain.py; python evaluate.py; python update_readme.py
 > ```
 
@@ -171,6 +171,12 @@ A run now writes its new selection to `predictions/selected_features.json` and l
 ```powershell
 python train.py --update-features
 ```
+
+Note that promotion takes two runs to settle. A run consumes the feature set that was
+pinned when it started, so promoting at the end leaves `params/` describing the *next*
+run rather than the one just reported - the same mismatch, just deliberate this time.
+Run without the flag when the goal is a commit whose results and feature set agree;
+use it when the goal is to adopt a new selection, then run again to report against it.
 
 `results.json` also records the fold count, holdout size, row count, feature count,
 the source path of the feature set consumed and a sha256 of it, and
