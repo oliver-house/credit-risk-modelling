@@ -51,7 +51,7 @@ def mean_abs_shap(name: str, models: list, X: np.ndarray) -> np.ndarray:
 def normalise(values: np.ndarray) -> np.ndarray:
     total = values.sum()
     if total == 0:
-        raise ValueError("All SHAP magnitudes are zero — something has gone wrong.")
+        raise ValueError("All SHAP magnitudes are zero; something has gone wrong.")
     return values / total
 
 

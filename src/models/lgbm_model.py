@@ -24,7 +24,7 @@ _BEST_PARAMS_PATH = PARAMS_DIR / "lgbm_best_params.json"
 def _load_params() -> dict:
     if not _BEST_PARAMS_PATH.exists():
         logger.warning(
-            f"No tuned params at {_BEST_PARAMS_PATH} — falling back to config "
+            f"No tuned params at {_BEST_PARAMS_PATH}, falling back to config "
             f"defaults. Run tune.py to generate them."
         )
         return dict(LGBM_PARAMS)

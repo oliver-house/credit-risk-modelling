@@ -38,7 +38,7 @@ def render_table(results: dict) -> str:
     cells = ["**Ensemble**", f"**{results['ensemble_oof_auc']:.5f}**"]
     if has_holdout:
         cells.append(f"**{results['ensemble_holdout_auc']:.5f}**")
-    cells.append("—")
+    cells.append("-")
     rows.append("| " + " | ".join(cells) + " |")
 
     return "\n".join(rows)

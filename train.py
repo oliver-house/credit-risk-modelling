@@ -122,7 +122,7 @@ def _norm(arr: np.ndarray) -> np.ndarray:
     """Normalise an array to sum to 1."""
     s = arr.sum()
     if s == 0:
-        raise ValueError("All feature importances are zero — something has gone wrong.")
+        raise ValueError("All feature importances are zero; something has gone wrong.")
     return arr / s
 
 
@@ -160,7 +160,7 @@ def _split_holdout(
     train: pd.DataFrame, frac: float
 ) -> tuple[pd.DataFrame, pd.DataFrame | None]:
     if frac <= 0:
-        logger.info("No holdout requested — training on all rows, OOF metrics only")
+        logger.info("No holdout requested: training on all rows, OOF metrics only")
         return train.reset_index(drop=True), None
 
     dev, holdout = train_test_split(
@@ -268,7 +268,7 @@ def main() -> None:
 
     logger.info(f"  Best weights  lgbm={best_weights['lgbm']}  "
                 f"xgb={best_weights['xgb']}  catboost={best_weights['catboost']}")
-    logger.info(f"  Best ensemble OOF AUC: {best_auc:.5f} — the maximum of "
+    logger.info(f"  Best ensemble OOF AUC: {best_auc:.5f}, the maximum of "
                 f"{len(wt_df)} grid points scored on these same predictions, so "
                 f"optimistic by construction")
 

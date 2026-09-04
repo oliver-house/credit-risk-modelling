@@ -33,7 +33,7 @@ flowchart LR
 | LightGBM | 0.79084 | 0.28 |
 | XGBoost | 0.79117 | 0.34 |
 | CatBoost | 0.79066 | 0.38 |
-| **Ensemble** | **0.79373** | — |
+| **Ensemble** | **0.79373** | - |
 
 <sub>3-fold CV · 307,511 rows · 657 features · no holdout</sub>
 
@@ -64,7 +64,7 @@ ensemble figure is therefore the maximum of 1,326 draws measured against the dat
 they were drawn on, and optimistic by construction; the three single-model AUCs
 beside it are not.
 
-Earlier versions of this README bounded that optimism by argument — the weight
+Earlier versions of this README bounded that optimism by argument - the weight
 surface is a broad plateau, 16% of the grid lands within 0.0002 of the best score,
 so there is little room to overfit. That argument is still true and the plot below
 still shows it, but it is now supporting colour rather than the bound. A stratified
@@ -72,28 +72,28 @@ still shows it, but it is now supporting colour rather than the bound. A stratif
 remaining 80%, and those weights are applied to the held-out slice exactly once.
 `results.json` reports two figures from that:
 
-- **`oof_minus_holdout`** — the headline OOF number less the same blend measured
+- **`oof_minus_holdout`** - the headline OOF number less the same blend measured
   blind. It absorbs ordinary train/holdout sampling noise as well as the weight
   search's optimism, so it bounds the latter rather than measuring it.
-- **`ensemble_gain_holdout`** — the ensemble less the best single model, both on the
+- **`ensemble_gain_holdout`** - the ensemble less the best single model, both on the
   same unseen rows. This is the one that isolates what the blend actually buys.
 
 ![Ensemble ROC curve](reports/roc_curve.png)
 
 ![Top 30 features by ensemble importance](reports/feature_importances.png)
 
-All four panels rank the *same* features by ensemble importance and show what each model scored them — a like-for-like comparison, not four separate top-30 lists.
+All four panels rank the *same* features by ensemble importance and show what each model scored them - a like-for-like comparison, not four separate top-30 lists.
 
 ![Ensemble OOF AUC across the blend weight grid](reports/weight_tuning.png)
 
-Every corner of that triangle is a single model at weight 1.0, and all three are dark — any reasonable blend beats any individual model. The optimum is also a broad plateau rather than a peak: 16% of the 1,326 grid points land within 0.0002 of the best score, and the entire surface spans just 0.00307.
+Every corner of that triangle is a single model at weight 1.0, and all three are dark - any reasonable blend beats any individual model. The optimum is also a broad plateau rather than a peak: 16% of the 1,326 grid points land within 0.0002 of the best score, and the entire surface spans just 0.00307.
 
 ## Key Findings
 
-- External data source scores dominate predictive signal: the 16 `EXT_SOURCE`-derived features account for 20.8% of ensemble importance, and the engineered `EXT_SOURCE_MEAN` alone accounts for 13.4% — more than the next eleven features combined
-- The strongest non-`EXT_SOURCE` predictors are `PAYMENT_RATE`, `PREV_INTEREST_RATE_max`, and `CC_RECENT_BALANCE_LIMIT_RATIO_max` — all three engineered, and all ahead of the best raw column outside `EXT_SOURCE` (`DAYS_EMPLOYED`)
+- External data source scores dominate predictive signal: the 16 `EXT_SOURCE`-derived features account for 20.8% of ensemble importance, and the engineered `EXT_SOURCE_MEAN` alone accounts for 13.4% - more than the next eleven features combined
+- The strongest non-`EXT_SOURCE` predictors are `PAYMENT_RATE`, `PREV_INTEREST_RATE_max`, and `CC_RECENT_BALANCE_LIMIT_RATIO_max` - all three engineered, and all ahead of the best raw column outside `EXT_SOURCE` (`DAYS_EMPLOYED`)
 - Tuning LightGBM moved it from 0.78791 to 0.79084, closing the gap to the other two models. Blend weights shifted from 0.14/0.42/0.44 to a near-even 0.28/0.34/0.38 as a result
-- Cumulative-importance feature selection is close to free: XGBoost, whose hyperparameters did not change between runs, scored 0.79117 on the retained 657 features against 0.79102 on the original 951 — unchanged within noise after dropping 31% of them
+- Cumulative-importance feature selection is close to free: XGBoost, whose hyperparameters did not change between runs, scored 0.79117 on the retained 657 features against 0.79102 on the original 951 - unchanged within noise after dropping 31% of them
 - The ensemble still beats the best single model by +0.0026 even though the three now score within 0.0006 of each other, so their errors stay decorrelated despite near-identical accuracy
 - 3,120,184 rows of `bureau_balance.csv` (11.4%) reference a `SK_ID_BUREAU` that does not appear in `bureau.csv`, so that monthly history is silently dropped by the join. Surfaced by the schema check, not by anything in the feature code
 
@@ -107,7 +107,7 @@ same statistic across the three**. `lgbm_model.py` asks for gain, `xgb_model.py`
 difference is visible rather than implied by a default.
 
 Both families of importance are also known to favour high-cardinality continuous
-features, which is exactly what the `EXT_SOURCE` columns are — so the headline needed
+features, which is exactly what the `EXT_SOURCE` columns are - so the headline needed
 an independent check. `explain.py` computes exact TreeSHAP over a row sample and
 reports the rank correlation between the two rankings, the overlap of their top-20
 lists, and each method's `EXT_SOURCE` share. Run it after the next full run and
@@ -174,7 +174,7 @@ python train.py --update-features
 
 `results.json` also records the fold count, holdout size, row count, feature count,
 the source path of the feature set consumed and a sha256 of it, and
-`update_readme.py` renders those under the table — so a stale table is visible as
+`update_readme.py` renders those under the table - so a stale table is visible as
 stale rather than a matter of trust.
 
 ## Input Validation
@@ -184,20 +184,20 @@ a renamed or retyped column drops out of the feature set without a word, and the
 pipeline's object-column sweep coerces a stray string to `NaN`. Both produce a model
 that trains happily and scores wrongly.
 
-`src/validation/schemas.py` declares all eight tables — columns present, dtypes,
-nullability, key uniqueness, plausible ranges and closed category sets — and reports
+`src/validation/schemas.py` declares all eight tables - columns present, dtypes,
+nullability, key uniqueness, plausible ranges and closed category sets - and reports
 every violation at once rather than failing on the first. Two severities, because
 real credit data is untidy:
 
-- **error** — structure the pipeline depends on. A missing column, a non-numeric
+- **error** - structure the pipeline depends on. A missing column, a non-numeric
   numeric column, a null or duplicated key, or a value outside a range that feature
   code branches on or divides by: an `EXT_SOURCE` outside `[0, 1]`, a positive
   `DAYS_BIRTH`, a `CREDIT_ACTIVE` string the ACTIVE/CLOSED split does not recognise.
-- **warn** — values outside what the training data held. One applicant reports 117m
+- **warn** - values outside what the training data held. One applicant reports 117m
   of income and that must not stop a run.
 
 Checked against all eight files in full: zero errors, and two warnings worth knowing
-about — `application_test.csv` carries one `REGION_RATING_CLIENT_W_CITY` of `-1`, and
+about - `application_test.csv` carries one `REGION_RATING_CLIENT_W_CITY` of `-1`, and
 the orphaned `bureau_balance` rows noted above.
 
 ```powershell
@@ -209,8 +209,8 @@ python -m src.validation.check --tables bureau installments --rows 100000
 
 ## Inference
 
-Training saves each fold model in its own library's format — `.txt`, `.ubj`, `.cbm`,
-not pickles, which are tied to the exact build that made them — alongside
+Training saves each fold model in its own library's format - `.txt`, `.ubj`, `.cbm`,
+not pickles, which are tied to the exact build that made them - alongside
 `models/manifest.json` recording the ordered feature list, the hyperparameters, the
 fold count, the blend weights, library versions and the git commit.
 
@@ -220,7 +220,7 @@ python predict.py --input applicants.csv --aux-dir data/ --output scores.csv
 
 `--input` is an application CSV shaped like `application_test.csv`; `--aux-dir` holds
 the other seven tables. A missing auxiliary table leaves its aggregates blank with a
-warning rather than failing — a batch with no bureau extract is an operational case,
+warning rather than failing - a batch with no bureau extract is an operational case,
 not an error.
 
 Two details make the served score the same score the model was evaluated on:
@@ -243,7 +243,7 @@ as missing. The count and a sample are logged; patching it would be guesswork.
 
 ## Experiment Tracking
 
-Each run is recorded to a local MLflow store under `mlruns/` — parameters, every AUC,
+Each run is recorded to a local MLflow store under `mlruns/` - parameters, every AUC,
 both optimism figures, the blend weights and the run's artefacts. Previously each run
 overwrote `predictions/results.json` and left no history.
 
@@ -251,7 +251,7 @@ Two choices worth stating, both forced by the environment:
 
 - **`mlflow-skinny`, not `mlflow`.** The full package pins `pandas<3` and this
   pipeline targets pandas 3.x. Skinny carries the tracking client and the stores but
-  not the bundled UI — browse the runs from a separate environment pointed at
+  not the bundled UI - browse the runs from a separate environment pointed at
   `mlruns/mlflow.db`.
 - **SQLite, not the plain directory store.** MLflow 3.x raises outright on a `file:`
   tracking URI unless `MLFLOW_ALLOW_FILE_STORE=true` is set, having put that backend
@@ -276,25 +276,25 @@ python evaluate.py
   isotonic recalibration fitted on the OOF predictions and applied to the holdout,
   shown beside the raw curve rather than instead of it
 - **A cost-sensitive threshold**, swept over every observed score so the optimum is
-  exact. `COST_FN` and `COST_FP` in `config.py` default to **10:1** — roughly
+  exact. `COST_FN` and `COST_FP` in `config.py` default to **10:1** - roughly
   loss-given-default on principal against forgone margin on one loan. That ratio is a
   business judgement, not a property of the model, so the chosen cut-off is also
   reported across 2:1 through 50:1
-- **A logistic regression baseline** — median impute, standardise, L2 logit —
+- **A logistic regression baseline** - median impute, standardise, L2 logit -
   cross-fitted on the same folds and scored on the same holdout. If the ensemble
   cannot beat a scorecard by a margin worth its operational cost, that is the finding
 
 ## Design Decisions
 
-- **Ensemble over single model** — blending LightGBM, XGBoost and CatBoost outperforms any individual model in all runs
-- **Stratified K-Fold** — preserves the ~8% default rate in each fold, ensuring each fold is representative of the full dataset
-- **Holdout before cross-validation** — the blend weights are tuned on out-of-fold predictions, so measuring the ensemble on those same predictions is circular. A 20% slice split off before anything else touches the data is what makes the reported gap a measurement
-- **Cumulative importance feature selection** — retains features accounting for 99% of ensemble feature importance, automatically dropping zero- and near-zero-importance features on subsequent runs
-- **Feature selection is a pinned input, not a side effect** — see Reproducibility above
-- **Separate tuning script** — `tune.py` tunes LightGBM hyperparameters on a row sample via Optuna TPE search; best params are saved to `params/` and loaded automatically by `train.py`
-- **Structural params live in `config.py`, tuned params in `params/`** — `LGBM_PARAMS` holds the non-negotiable keys (`objective`, `metric`, `n_estimators`) and Optuna's results are layered on top. Keeping the two apart means a tuning run cannot accidentally strip the objective, and `train.py` still runs on a clean clone before any tuning has happened
-- **Native model serialisation over pickle** — a pickled booster is tied to the exact library build that created it; all three libraries ship a documented format of their own
-- **No `shap` dependency** — all three libraries compute exact TreeSHAP natively, so the comparison needs no new package, no numba, and no floor on the CI Python matrix
+- **Ensemble over single model** - blending LightGBM, XGBoost and CatBoost outperforms any individual model in all runs
+- **Stratified K-Fold** - preserves the ~8% default rate in each fold, ensuring each fold is representative of the full dataset
+- **Holdout before cross-validation** - the blend weights are tuned on out-of-fold predictions, so measuring the ensemble on those same predictions is circular. A 20% slice split off before anything else touches the data is what makes the reported gap a measurement
+- **Cumulative importance feature selection** - retains features accounting for 99% of ensemble feature importance, automatically dropping zero- and near-zero-importance features on subsequent runs
+- **Feature selection is a pinned input, not a side effect** - see Reproducibility above
+- **Separate tuning script** - `tune.py` tunes LightGBM hyperparameters on a row sample via Optuna TPE search; best params are saved to `params/` and loaded automatically by `train.py`
+- **Structural params live in `config.py`, tuned params in `params/`** - `LGBM_PARAMS` holds the non-negotiable keys (`objective`, `metric`, `n_estimators`) and Optuna's results are layered on top. Keeping the two apart means a tuning run cannot accidentally strip the objective, and `train.py` still runs on a clean clone before any tuning has happened
+- **Native model serialisation over pickle** - a pickled booster is tied to the exact library build that created it; all three libraries ship a documented format of their own
+- **No `shap` dependency** - all three libraries compute exact TreeSHAP natively, so the comparison needs no new package, no numba, and no floor on the CI Python matrix
 
 ## Data
 
@@ -354,7 +354,7 @@ Tuned params are already committed to `params/lgbm_best_params.json` and loaded 
 ## Docker
 
 The image pins every dependency and mounts the data rather than baking in the ~2.6 GB
-of CSVs. `libgomp1` is installed explicitly — LightGBM and XGBoost link against
+of CSVs. `libgomp1` is installed explicitly - LightGBM and XGBoost link against
 OpenMP at runtime and `python:slim` ships none, so without it both import cleanly and
 then fail on the first fit.
 
@@ -376,7 +376,7 @@ pytest
 
 Covers all six feature modules, the schema declarations, model persistence and
 reload, the holdout split, weight tuning, the SHAP extraction, the evaluation
-functions, MLflow tracking, the parameter loader and the README updater — plus an
+functions, MLflow tracking, the parameter loader and the README updater - plus an
 end-to-end check that the inference path reproduces the training path cell for cell
 on a synthetic eight-table dataset. Everything runs on synthetic frames in under a
 minute, so the Kaggle download is not needed to check out the repo and verify it

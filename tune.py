@@ -105,7 +105,7 @@ def main() -> None:
     )
 
     if not study.trials or all(t.state.name != "COMPLETE" for t in study.trials):
-        logger.error("No trials completed successfully — check sample size and data.")
+        logger.error("No trials completed successfully; check sample size and data.")
         return
 
     best = study.best_trial

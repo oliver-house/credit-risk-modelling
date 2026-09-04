@@ -43,7 +43,7 @@ def load_scores(data_dir: Path) -> tuple[np.ndarray, np.ndarray, str]:
         raise SystemExit(f"No predictions under {data_dir}. Run train.py first.")
 
     logger.warning(
-        f"No {holdout_path.name} — falling back to the out-of-fold predictions. "
+        f"No {holdout_path.name}, falling back to the out-of-fold predictions. "
         f"Those are the rows the blend weights were tuned on, so every number "
         f"below is optimistic. Re-run train.py with a holdout to fix that."
     )

@@ -22,7 +22,7 @@ def test_render_table_matches_results_payload():
     assert "| LightGBM | 0.78791 | 0.14 |" in table
     assert "| XGBoost | 0.79102 | 0.42 |" in table
     assert "| CatBoost | 0.79087 | 0.44 |" in table
-    assert "| **Ensemble** | **0.79348** | — |" in table
+    assert "| **Ensemble** | **0.79348** | - |" in table
 
 
 def test_render_table_pads_auc_to_five_decimals():
@@ -101,7 +101,7 @@ def test_render_table_adds_a_holdout_column_when_the_run_produced_one():
 
     assert "| Model | OOF AUC | Holdout AUC | Weight |" in table
     assert "| LightGBM | 0.78791 | 0.78512 | 0.14 |" in table
-    assert "| **Ensemble** | **0.79348** | **0.78901** | — |" in table
+    assert "| **Ensemble** | **0.79348** | **0.78901** | - |" in table
 
 
 def test_render_table_keeps_the_old_shape_without_a_holdout():

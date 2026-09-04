@@ -37,7 +37,7 @@ def _read_aux(key: str, aux_dir: Path | None) -> pd.DataFrame | None:
     path = DATA_FILES[key] if aux_dir is None else Path(aux_dir) / TABLE_SCHEMAS[key].filename
     if not path.exists():
         logger.warning(
-            f"{key}: {path} not found — every {key} aggregate will be missing for "
+            f"{key}: {path} not found; every {key} aggregate will be missing for "
             f"this batch. Scores are still produced; they are simply weaker."
         )
         return None

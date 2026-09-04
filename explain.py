@@ -42,7 +42,7 @@ def load_sample(data_dir: Path, features: list[str], n_rows: int,
         return matrix
 
     logger.warning(
-        f"No cached feature matrix under {data_dir} — rebuilding from the raw "
+        f"No cached feature matrix under {data_dir}, rebuilding from the raw "
         f"tables. Run `train.py --save-features` to avoid this next time."
     )
     from src.features.pipeline import build_features

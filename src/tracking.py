@@ -50,7 +50,7 @@ class RunTracker:
             import mlflow
         except ImportError:
             logger.warning(
-                "mlflow-skinny is not installed — this run will not be tracked. "
+                "mlflow-skinny is not installed; this run will not be tracked. "
                 "Install it with `pip install -r requirements.txt`."
             )
             return False
@@ -66,7 +66,7 @@ class RunTracker:
                 )
             mlflow.set_experiment(self.experiment)
         except Exception as exc:
-            logger.warning(f"MLflow could not be initialised ({exc}) — "
+            logger.warning(f"MLflow could not be initialised ({exc}); "
                            f"this run will not be tracked.")
             return False
 
@@ -96,7 +96,7 @@ class RunTracker:
         return False
 
     def _disable(self, exc: Exception) -> None:
-        logger.warning(f"MLflow call failed ({exc}) — tracking disabled for this run.")
+        logger.warning(f"MLflow call failed ({exc}); tracking disabled for this run.")
         self.enabled = False
 
     @property
