@@ -14,7 +14,7 @@ jobs:
         python-version: ["3.11", "3.12", "3.13", "3.14"]
 
     env:
-      MPLBACKEND: Agg   # train.py imports pyplot at module scope; no display on CI
+      MPLBACKEND: Agg
 
     steps:
       - uses: actions/checkout@v4
@@ -37,3 +37,40 @@ jobs:
 
       - name: Test
         run: pytest
+
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build the image
+        run: docker build -t creditrisk:ci .
+
+      - name: Every pinned runtime dependency imports
+        run: |
+          docker run --rm creditrisk:ci -c "
+          import catboost, lightgbm, matplotlib, mlflow, numpy, optuna
+          import pandas, scipy, sklearn, xgboost
+          print('imports ok')
+          "
+
+      - name: OpenMP is present, so the boosters can actually fit
+        run: |
+          docker run --rm creditrisk:ci -c "
+          import numpy as np, lightgbm as lgb, xgboost as xgb
+          from catboost import CatBoostClassifier
+          rng = np.random.default_rng(0)
+          X = rng.normal(size=(200, 4)); y = (X[:, 0] > 0).astype(int)
+          lgb.train({'objective': 'binary', 'verbose': -1}, lgb.Dataset(X, label=y), 5)
+          xgb.XGBClassifier(n_estimators=5, verbosity=0).fit(X, y)
+          CatBoostClassifier(iterations=5, verbose=0).fit(X, y)
+          print('all three fit')
+          "
+
+      - name: Both entry points respond
+        run: |
+          docker run --rm creditrisk:ci train.py --help
+          docker run --rm creditrisk:ci predict.py --help
+          docker run --rm creditrisk:ci explain.py --help
+          docker run --rm creditrisk:ci evaluate.py --help
+          docker run --rm creditrisk:ci -m src.validation.check --help
