@@ -76,10 +76,14 @@ def main() -> None:
     parser.add_argument("--folds",   type=int, default=3,     help="CV folds per trial")
     parser.add_argument("--sample",  type=int, default=0,
                         help="Row sample for speed (0 = full dataset)")
+    parser.add_argument("--no-validate", action="store_true",
+                        help="Skip the input schema check on the raw tables")
     args = parser.parse_args()
 
     with timer("Feature engineering", logger):
-        train, _ = build_features(n_rows=args.sample)
+        train = build_features(
+            n_rows=args.sample, validate_input=not args.no_validate
+        ).train
 
     features = [c for c in train.columns if c not in [TARGET_COL, ID_COL]]
     X = train[features].values
