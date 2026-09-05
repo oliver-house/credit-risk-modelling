@@ -28,27 +28,16 @@ flowchart LR
 
 <!-- results:start -->
 
-| Model | OOF AUC | Weight |
-|-------|---------|--------|
-| LightGBM | 0.79084 | 0.28 |
-| XGBoost | 0.79117 | 0.34 |
-| CatBoost | 0.79066 | 0.38 |
-| **Ensemble** | **0.79373** | - |
+| Model | OOF AUC | Holdout AUC | Weight |
+|-------|---------|-------------|--------|
+| LightGBM | 0.79025 | 0.79462 | 0.26 |
+| XGBoost | 0.79062 | 0.79518 | 0.36 |
+| CatBoost | 0.79019 | 0.79375 | 0.38 |
+| **Ensemble** | **0.79322** | **0.79571** | - |
 
-<sub>3-fold CV · 307,511 rows · 657 features · no holdout</sub>
+<sub>61,503-row holdout (20%) split off before any CV · 5-fold CV · 307,511 rows · 611 features from `params/selected_features.json` · feature-set sha256 `7991202a5e46`</sub>
 
 <!-- results:end -->
-
-> **These numbers predate the holdout split and the move to 5 folds.** They are the
-> last full run and are kept because they are real, not because they are current.
-> The pipeline now takes a 20% stratified slice off before any cross-validation and
-> runs 5 folds, so every figure above will move when the run below is executed.
-> Delete this note once it is.
->
-> ```powershell
-> python train.py --save-features
-> python explain.py; python evaluate.py; python update_readme.py
-> ```
 
 `update_readme.py` rewrites the table and the provenance line under it from
 `predictions/results.json`, so the fold count, holdout size, row count, feature count
@@ -65,18 +54,36 @@ they were drawn on, and optimistic by construction; the three single-model AUCs
 beside it are not.
 
 Earlier versions of this README bounded that optimism by argument - the weight
-surface is a broad plateau, 16% of the grid lands within 0.0002 of the best score,
-so there is little room to overfit. That argument is still true and the plot below
-still shows it, but it is now supporting colour rather than the bound. A stratified
+surface is a broad plateau, 16.5% of the grid lands within 0.0002 of the best score,
+so there is little room to overfit. The plateau is real and the plot below still
+shows it, but it turns out to bound the wrong thing. It says that picking the *wrong*
+weights costs almost nothing; it says nothing about whether the blend's advantage over
+its own members is real, and that is the quantity the headline rests on. A stratified
 20% slice is held back before any cross-validation, the weights are tuned on the
 remaining 80%, and those weights are applied to the held-out slice exactly once.
 `results.json` reports two figures from that:
 
-- **`oof_minus_holdout`** - the headline OOF number less the same blend measured
-  blind. It absorbs ordinary train/holdout sampling noise as well as the weight
-  search's optimism, so it bounds the latter rather than measuring it.
 - **`ensemble_gain_holdout`** - the ensemble less the best single model, both on the
   same unseen rows. This is the one that isolates what the blend actually buys.
+- **`oof_minus_holdout`** - the headline OOF number less the same blend measured
+  blind. Reported for completeness, but read the first figure instead: this one is
+  not a clean measurement, for the reason given below.
+
+**What it says.** On out-of-fold predictions the ensemble beats the best single model
+by **+0.00260**. On the held-out slice, with the weights frozen, that gain falls to
+**+0.00053**. Both comparisons are internally like-for-like, so the difference is the
+weight search scoring itself on its own data: roughly four fifths of the apparent
+ensemble gain is optimism. The blend is still worth having, but it buys about half a
+basis point over simply using XGBoost alone, not two and a half.
+
+**Why `oof_minus_holdout` came out negative.** It is -0.00249, meaning the holdout
+scored *higher* than the OOF number it was supposed to deflate. That is not evidence
+the weight search was unbiased. Each OOF prediction comes from the single fold model
+that did not train on that row, while each holdout prediction is the average of all
+five fold models, and averaging five boosters is worth a few basis points on its own.
+The comparison is therefore biased toward the holdout by construction, on top of
+ordinary sampling noise on 61,503 rows. It bounds nothing usefully, which is why the
+gain figure above is the one the conclusion rests on.
 
 ![Ensemble ROC curve](reports/roc_curve.png)
 
@@ -86,32 +93,72 @@ All four panels rank the *same* features by ensemble importance and show what ea
 
 ![Ensemble OOF AUC across the blend weight grid](reports/weight_tuning.png)
 
-Every corner of that triangle is a single model at weight 1.0, and all three are dark - any reasonable blend beats any individual model. The optimum is also a broad plateau rather than a peak: 16% of the 1,326 grid points land within 0.0002 of the best score, and the entire surface spans just 0.00307.
+Every corner of that triangle is a single model at weight 1.0, and the three corners are the three lowest points on the whole surface (0.79019, 0.79025, 0.79062), so on out-of-fold data any blend at all beats any individual model. The optimum is a broad plateau rather than a peak: 16.5% of the 1,326 grid points land within 0.0002 of the best score, and the entire surface spans just 0.00303. Note that the span and the blend's apparent advantage over the corners are the same size, which is the visual form of the point made above - and the holdout says most of that height is not real.
 
 ## Key Findings
 
-- External data source scores dominate predictive signal: the 16 `EXT_SOURCE`-derived features account for 20.8% of ensemble importance, and the engineered `EXT_SOURCE_MEAN` alone accounts for 13.4% - more than the next eleven features combined
-- The strongest non-`EXT_SOURCE` predictors are `PAYMENT_RATE`, `PREV_INTEREST_RATE_max`, and `CC_RECENT_BALANCE_LIMIT_RATIO_max` - all three engineered, and all ahead of the best raw column outside `EXT_SOURCE` (`DAYS_EMPLOYED`)
-- Tuning LightGBM moved it from 0.78791 to 0.79084, closing the gap to the other two models. Blend weights shifted from 0.14/0.42/0.44 to a near-even 0.28/0.34/0.38 as a result
-- Cumulative-importance feature selection is close to free: XGBoost, whose hyperparameters did not change between runs, scored 0.79117 on the retained 657 features against 0.79102 on the original 951 - unchanged within noise after dropping 31% of them
-- The ensemble still beats the best single model by +0.0026 even though the three now score within 0.0006 of each other, so their errors stay decorrelated despite near-identical accuracy
+- **The ensemble buys far less than out-of-fold scoring suggests.** It beats the best single model by +0.00260 measured out-of-fold, and by +0.00053 on the held-out slice with the weights frozen. About four fifths of the apparent gain was the weight search scoring itself on its own data
+- **External data source scores dominate, but less than the built-in importances claim.** The 16 `EXT_SOURCE`-derived features take 20.4% of ensemble importance by the built-in measures and 16.6% by TreeSHAP, with `EXT_SOURCE_MEAN` ranked first on both. The section above sets out why the two disagree
+- The strongest non-`EXT_SOURCE` predictors are `PAYMENT_RATE` and `PREV_INTEREST_RATE_max` - ranked 2nd and 3rd by SHAP, 3rd and 4th by gain - both engineered, and both ahead of the best raw column outside `EXT_SOURCE` (`DAYS_EMPLOYED`, 7th on either measure)
+- **What the ensemble does buy is measured against a scorecard, not against its own parts.** A cross-fitted L2 logistic regression on the same 611 features scores 0.77988 on the same holdout, so the ensemble is worth +0.01582 AUC over it - thirty times what the blend is worth over its own best member. Most of the distance from a scorecard is bought by the gradient boosting, and most of the rest by the feature engineering that both models share
+- **The probabilities are already well calibrated and do not need fixing.** Calibration slope 1.062, Brier 0.06494, and every decile within 0.5 percentage points of its observed rate except the riskiest, where the model under-predicts by 1.6pp. Isotonic recalibration fitted on the OOF predictions moved the slope to 1.026 but left the Brier score unchanged (0.06495) and cost 0.00026 AUC, since a step function collapses ties. It is reported and not adopted
+- The three models now score within 0.0006 of each other out-of-fold and within 0.0015 on the holdout, and the tuned blend weights are near-even at 0.26/0.36/0.38. There is no longer a meaningfully best model here, which is also why the blend has so little left to add
+- Tuning LightGBM moved it from 0.78791 to 0.79084, closing the gap to the other two models, and moved the blend weights from 0.14/0.42/0.44 towards even. Both figures come from the earlier 3-fold runs without a holdout, so they compare to each other and not to the table above
+- Cumulative-importance feature selection is close to free: XGBoost, whose hyperparameters did not change between runs, scored 0.79117 on the retained 657 features against 0.79102 on the original 951 - unchanged within noise after dropping 31% of them. Also a 3-fold pair
 - 3,120,184 rows of `bureau_balance.csv` (11.4%) reference a `SK_ID_BUREAU` that does not appear in `bureau.csv`, so that monthly history is silently dropped by the join. Surfaced by the schema check, not by anything in the feature code
 
-### A caveat on the 20.8%
+### That 20.4% is inflated, and SHAP says by about a fifth
 
-That figure is a blend of the models' built-in importances, and those are **not the
-same statistic across the three**. `lgbm_model.py` asks for gain, `xgb_model.py` sets
-`importance_type="gain"` on the constructor, but `catboost_model.py` was calling
+The figure above is a blend of the models' built-in importances, and those are **not
+the same statistic across the three**. `lgbm_model.py` asks for gain, `xgb_model.py`
+sets `importance_type="gain"` on the constructor, but `catboost_model.py` was calling
 `get_feature_importance()` with no argument, whose default for a Logloss model is
 `PredictionValuesChange` rather than gain. It now names the type explicitly so the
 difference is visible rather than implied by a default.
 
-Both families of importance are also known to favour high-cardinality continuous
-features, which is exactly what the `EXT_SOURCE` columns are - so the headline needed
-an independent check. `explain.py` computes exact TreeSHAP over a row sample and
-reports the rank correlation between the two rankings, the overlap of their top-20
-lists, and each method's `EXT_SOURCE` share. Run it after the next full run and
-record what it says here, whichever way it lands.
+Both families are also known to favour high-cardinality continuous features, which is
+exactly what the `EXT_SOURCE` columns are, so the headline needed an independent
+check. `explain.py` computes exact TreeSHAP - natively, via each library's own
+implementation - over 5,000 held-out rows and all fifteen fold models, and blends the
+three with the same frozen weights.
+
+| | Built-in | TreeSHAP |
+|---|---|---|
+| All 16 `EXT_SOURCE`-derived features | 20.4% | **16.6%** |
+| `EXT_SOURCE_MEAN` alone | 12.8% | **8.7%** |
+| Top-ranked feature | `EXT_SOURCE_MEAN` | `EXT_SOURCE_MEAN` |
+| Spearman rank correlation over all 611 features | 0.932 | |
+| Top-20 overlap | 11/20 | |
+
+**The bias is real and runs in the predicted direction.** The `EXT_SOURCE` block
+loses about a fifth of its credit under SHAP. The sharpest illustration is the claim
+this README used to make unqualified: `EXT_SOURCE_MEAN` scores more than the next
+eleven features combined under the built-in statistic (12.8% against 10.7%) and
+clearly less under SHAP (8.7% against 14.7%). That sentence was an artefact of the
+measure, not a fact about the model.
+
+**The qualitative finding survives.** Both methods put `EXT_SOURCE_MEAN` first by a
+wide margin, both agree on `PAYMENT_RATE` and `PREV_INTEREST_RATE_max` as the leading
+engineered predictors, and a Spearman correlation of 0.932 means the two rankings
+broadly agree. External scores still dominate; they dominate less than 20.4% implied.
+
+Where they disagree is instructive, and it is the textbook signature of the bias:
+
+- **Gain over-credits continuous columns with many split points.** `EXT_SOURCE_2`
+  falls from rank 5 to 24, `EXT_SOURCE_3` from 9 to 32, and
+  `CC_RECENT_BALANCE_LIMIT_RATIO_max` from 6 to 31.
+- **Gain under-credits binaries.** `CODE_GENDER_M` rises from rank 20 to 6, and
+  `NAME_FAMILY_STATUS_Married` from 46 to 9. A binary offers one split point and
+  reduces impurity modestly, while still shifting predictions a long way.
+
+One limit worth stating: TreeSHAP corrects the cardinality bias but **not** the
+splitting of credit between correlated features. `EXT_SOURCE_MEAN`, `EXT_SOURCE_2_3`
+and the raw `EXT_SOURCE_*` columns are correlated by construction, so SHAP divides the
+same underlying signal among them in a way that depends on the trees. The 16.6% group
+total is therefore the trustworthy number here; any individual member's share, in
+either column, is not.
+
+![TreeSHAP against the built-in importances](reports/shap_vs_gain.png)
 
 ## Repository Structure
 
@@ -151,7 +198,7 @@ tests/                      # Unit tests - synthetic data, no Kaggle download ne
 params/
   lgbm_best_params.json     # Best LightGBM hyperparameters from tune.py (loaded automatically)
   selected_features.json    # Pinned feature set (an *input*; promoted with --update-features)
-reports/                    # Committed plots (ROC curve, feature importances, weight tuning)
+reports/                    # Committed plots and the score band table
 models/                     # Saved fold models and manifest.json (gitignored - large)
 mlruns/                     # MLflow run history (gitignored)
 predictions/                # Generated predictions, metrics and feature caches (gitignored)
@@ -290,9 +337,49 @@ python evaluate.py
   cross-fitted on the same folds and scored on the same holdout. If the ensemble
   cannot beat a scorecard by a margin worth its operational cost, that is the finding
 
+### What it reports
+
+Measured on the 61,503-row holdout at an 8.07% base rate:
+
+| | Ensemble | Logistic baseline |
+|---|---|---|
+| AUC | 0.79571 | 0.77988 |
+| Gini | 0.5914 | 0.5598 |
+| KS | 0.4488 | 0.4239 |
+| Brier | 0.06494 | 0.06650 |
+| Calibration slope | 1.062 | 1.008 |
+
+The full decile table is in [`reports/score_bands.md`](reports/score_bands.md). The
+riskiest decile carries a **31.8% bad rate against an 8.07% base, a 3.93x lift, and
+holds 39.3% of every default in the slice**; the top three deciles hold 70.9% of them.
+The safest decile defaults at 0.78%.
+
+![Calibration by equal-count score bin](reports/calibration_curve.png)
+
+Calibration is good enough to use as a probability rather than only as a rank, which
+is not what gradient boosting on an 8% base rate usually gives you. The one
+systematic miss is in the riskiest decile, where the model predicts 30.2% against
+31.8% observed - conservative in the band where being wrong costs most.
+
+At the default **10:1** false-negative to false-positive cost the optimum is to
+decline above 0.0868, which approves 71.6% of applicants and cuts the bad rate among
+them from 8.07% to **3.46%** while declining 69.4% of all eventual defaults. The
+number that ratio is really asserting: it declines **4.1 good applicants for every
+default it avoids**. That is a business judgement about relative cost, not a property
+of the model, so `evaluate.py` also reports the cut-off at 2:1 through 50:1 and
+`--cost-fn` / `--cost-fp` override it.
+
+| Cost ratio | Threshold | Approved | Bad rate approved | Defaults declined |
+|---|---|---|---|---|
+| 2:1 | 0.2847 | 95.7% | 6.56% | 22.2% |
+| 5:1 | 0.1623 | 87.3% | 5.02% | 45.7% |
+| **10:1** | **0.0868** | **71.6%** | **3.46%** | **69.4%** |
+| 20:1 | 0.0497 | 52.5% | 2.28% | 85.2% |
+| 50:1 | 0.0193 | 19.2% | 1.13% | 97.3% |
+
 ## Design Decisions
 
-- **Ensemble over single model** - blending LightGBM, XGBoost and CatBoost outperforms any individual model in all runs
+- **Ensemble over single model, but honestly measured** - blending LightGBM, XGBoost and CatBoost beats every individual model on out-of-fold predictions in every run, and beats the best of them by +0.00053 on the holdout with the weights frozen. Kept because it is free at inference time and does not hurt, not because it is worth much
 - **Stratified K-Fold** - preserves the ~8% default rate in each fold, ensuring each fold is representative of the full dataset
 - **Holdout before cross-validation** - the blend weights are tuned on out-of-fold predictions, so measuring the ensemble on those same predictions is circular. A 20% slice split off before anything else touches the data is what makes the reported gap a measurement
 - **Cumulative importance feature selection** - retains features accounting for 99% of ensemble feature importance, automatically dropping zero- and near-zero-importance features on subsequent runs
@@ -394,3 +481,4 @@ works.
 - Feature interactions between EXT_SOURCE scores and credit/income ratios
 - Resolve the train/test null-handling asymmetry noted under Inference, which needs a full re-run to re-baseline every number
 - Population stability monitoring against the score bands, once there is a second batch to compare
+- Decide the blend deliberately rather than by inertia. +0.00053 over XGBoost alone on the holdout is close to free, but it is also close to nothing, and it triples the models to load and maintain at inference
